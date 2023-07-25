@@ -86,41 +86,49 @@ app.use(express.json());
 
 // Endpoint pour l'inscription
 app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
-  console.log(username);
-  // Vérifier si l'utilisateur existe déjà
-  const existingUser = await User.findOne({ username });
-  if (existingUser) {
-    return res.status(409).json({ error: "Username already exists" });
+  try {
+    const { username, password } = req.body;
+    console.log(username);
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(409).json({ error: "Username already exists" });
+    }
+
+    // Hachage du mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Création d'un nouvel utilisateur
+    const newUser = new User({ username, password: hashedPassword });
+    await newUser.save();
+
+    res.status(201).json({ message: "User created successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error please try again later" });
   }
-
-  // Hachage du mot de passe
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Création d'un nouvel utilisateur
-  const newUser = new User({ username, password: hashedPassword });
-  await newUser.save();
-
-  res.status(201).json({ message: "User created successfully" });
 });
 
 // Endpoint pour l'authentification
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  // Vérifier si l'utilisateur existe
-  const user = await User.findOne({ username });
-  if (!user) {
-    return res.status(401).json({ error: "Invalid username or password" });
+    // Vérifier si l'utilisateur existe
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    // Vérifier le mot de passe
+    const isPasswordValid = bcrypt.compareSync(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    res.json({ message: "Login successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error please try again later" });
   }
-
-  // Vérifier le mot de passe
-  const isPasswordValid = bcrypt.compareSync(password, user.password);
-  if (!isPasswordValid) {
-    return res.status(401).json({ error: "Invalid username or password" });
-  }
-
-  res.json({ message: "Login successful" });
 });
 
 server.listen(port, () => {
